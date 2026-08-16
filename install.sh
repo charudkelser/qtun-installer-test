@@ -1,13 +1,9 @@
 #!/bin/sh
 
 echo "========================================"
-echo "       QTUN AUTO INSTALLER TEST"
+echo "      QTUN AUTO INSTALLER TEST 1.1"
 echo "========================================"
 echo
-
-# ==============================
-# DETECT OPENWRT
-# ==============================
 
 echo "[+] Detecting OpenWrt..."
 
@@ -22,67 +18,52 @@ else
 fi
 
 echo
-
-# ==============================
-# DETECT OPKG ARCHITECTURE
-# ==============================
-
-echo "[+] Detecting package architecture..."
-
-ARCH="$(opkg print-architecture 2>/dev/null | awk 'NR==2 {print $2}')"
-
-if [ -z "$ARCH" ]; then
-    echo "[WARN] opkg architecture tidak ditemukan."
-    ARCH="unknown"
-fi
-
-echo "[OK] Architecture : $ARCH"
-
-echo
-
-# ==============================
-# DETECT MACHINE
-# ==============================
-
-echo "[+] Detecting machine..."
+echo "[+] Machine..."
 
 MACHINE="$(uname -m)"
 
 echo "[OK] Machine       : $MACHINE"
 
 echo
+echo "========================================"
+echo "      OPKG ARCHITECTURES"
+echo "========================================"
+echo
 
-# ==============================
-# DETECT TARGET
-# ==============================
+if command -v opkg >/dev/null 2>&1; then
 
-echo "[+] Detecting OpenWrt target..."
+    opkg print-architecture 2>/dev/null
 
-TARGET="$(ubus call system board 2>/dev/null | sed -n 's/.*"target": *"\([^"]*\)".*/\1/p')"
+else
 
-if [ -z "$TARGET" ]; then
-    TARGET="unknown"
+    echo "[ERROR] opkg tidak ditemukan!"
+    exit 1
+
 fi
 
-echo "[OK] Target        : $TARGET"
-
-echo
-
-# ==============================
-# SUMMARY
-# ==============================
-
-echo "========================================"
-echo "        DETECTION COMPLETED"
-echo "========================================"
-echo
-echo "OpenWrt      : $DISTRIB_RELEASE"
-echo "Revision     : $DISTRIB_REVISION"
-echo "Architecture : $ARCH"
-echo "Machine      : $MACHINE"
-echo "Target       : $TARGET"
 echo
 echo "========================================"
-echo " Installation NOT performed."
-echo " This is TEST MODE."
+echo "      ARCHITECTURE SUMMARY"
 echo "========================================"
+echo
+
+echo "Semua architecture yang terdaftar:"
+echo
+
+opkg print-architecture 2>/dev/null |
+while read -r TYPE ARCH PRIORITY
+do
+    if [ "$TYPE" = "arch" ]; then
+        echo "  ARCH     : $ARCH"
+        echo "  PRIORITY : $PRIORITY"
+        echo
+    fi
+done
+
+echo "========================================"
+echo "      TEST 1.1 COMPLETED"
+echo "========================================"
+echo
+echo "Tidak ada proses install."
+echo "Tidak ada perubahan konfigurasi."
+echo
