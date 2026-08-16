@@ -105,4 +105,4 @@ echo "      TEST 1.2 COMPLETED"
 echo "========================================"
 echo
 echo "Tidak ada proses install."
-echo "Tidak ada perubahan konfigurasi."￼Enter
+echo "Tidak ada perubahan konfigurasi."
