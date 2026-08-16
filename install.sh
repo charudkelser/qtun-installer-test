@@ -4,8 +4,10 @@ VERSION="1.0.6"
 REPO="charudkelser/luci-app-qtun"
 BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
 
+FILE="/tmp/qtun-test-package.ipk"
+
 echo "========================================"
-echo "      QTUN AUTO INSTALLER TEST 2"
+echo "      QTUN AUTO INSTALLER TEST 3"
 echo "========================================"
 echo
 
@@ -28,7 +30,6 @@ echo "[OK] Revision : $DISTRIB_REVISION"
 # ==============================
 
 MACHINE="$(uname -m)"
-
 echo "[OK] Machine : $MACHINE"
 
 # ==============================
@@ -59,15 +60,15 @@ fi
 echo "[OK] Selected Arch : $BEST_ARCH"
 echo "[OK] Priority      : $BEST_PRIORITY"
 
+# ==============================
+# PACKAGE DETECTION
+# ==============================
+
 echo
 echo "========================================"
 echo "      PACKAGE DETECTION"
 echo "========================================"
 echo
-
-# ==============================
-# SPECIFIC PACKAGE
-# ==============================
 
 SPECIFIC_PACKAGE="luci-app-qtun_${VERSION}_${BEST_ARCH}.ipk"
 SPECIFIC_URL="$BASE_URL/$SPECIFIC_PACKAGE"
@@ -77,18 +78,15 @@ echo "    $SPECIFIC_PACKAGE"
 
 if wget --no-check-certificate --spider -q "$SPECIFIC_URL" 2>/dev/null; then
 
-    echo "[OK] Specific package FOUND!"
     SELECTED_PACKAGE="$SPECIFIC_PACKAGE"
     SELECTED_URL="$SPECIFIC_URL"
     PACKAGE_TYPE="ARCHITECTURE-SPECIFIC"
 
+    echo "[OK] Specific package FOUND!"
+
 else
 
     echo "[INFO] Specific package NOT FOUND."
-
-    # ==============================
-    # UNIVERSAL FALLBACK
-    # ==============================
 
     UNIVERSAL_PACKAGE="luci-app-qtun_${VERSION}_all.ipk"
     UNIVERSAL_URL="$BASE_URL/$UNIVERSAL_PACKAGE"
@@ -99,40 +97,75 @@ else
 
     if wget --no-check-certificate --spider -q "$UNIVERSAL_URL" 2>/dev/null; then
 
-        echo "[OK] Universal package FOUND!"
-
         SELECTED_PACKAGE="$UNIVERSAL_PACKAGE"
         SELECTED_URL="$UNIVERSAL_URL"
         PACKAGE_TYPE="UNIVERSAL"
 
+        echo "[OK] Universal package FOUND!"
+
     else
 
         echo "[ERROR] No compatible package found!"
-        echo
-        echo "Architecture : $BEST_ARCH"
-        echo "Version      : $VERSION"
         exit 1
     fi
 fi
 
+# ==============================
+# DOWNLOAD
+# ==============================
+
 echo
 echo "========================================"
-echo "      PACKAGE SELECTION RESULT"
+echo "      PACKAGE DOWNLOAD"
+echo "========================================"
+echo
+
+rm -f "$FILE"
+
+echo "[+] Downloading..."
+echo
+echo "    $SELECTED_PACKAGE"
+echo
+
+wget --no-check-certificate \
+    -O "$FILE" \
+    "$SELECTED_URL"
+
+if [ $? -ne 0 ]; then
+    echo
+    echo "[ERROR] Download gagal!"
+    rm -f "$FILE"
+    exit 1
+fi
+
+# ==============================
+# VERIFY FILE
+# ==============================
+
+if [ ! -s "$FILE" ]; then
+    echo "[ERROR] File hasil download kosong!"
+    rm -f "$FILE"
+    exit 1
+fi
+
+SIZE="$(wc -c < "$FILE" | tr -d ' ')"
+
+echo
+echo "========================================"
+echo "      PACKAGE INFORMATION"
 echo "========================================"
 echo
 
 echo "Architecture : $BEST_ARCH"
 echo "Package      : $SELECTED_PACKAGE"
 echo "Type         : $PACKAGE_TYPE"
-echo "URL          : $SELECTED_URL"
+echo "Size         : $SIZE bytes"
+
+# ==============================
+# SHA256
+# ==============================
 
 echo
-echo "========================================"
-echo "      TEST 2 COMPLETED"
-echo "========================================"
-echo
-echo "Package ditemukan."
-echo "Tidak ada download."
-echo "Tidak ada proses install."
-echo "Tidak ada perubahan sistem."
-echo
+echo "[+] Calculating SHA256..."
+
+if command -v sha256sum >/dev/null 2>&1; then
