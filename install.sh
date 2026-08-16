@@ -7,7 +7,7 @@ BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
 FILE="/tmp/qtun-test-package.ipk"
 
 echo "========================================"
-echo "      QTUN AUTO INSTALLER TEST 3"
+echo "      QTUN AUTO INSTALLER TEST 3.1"
 echo "========================================"
 echo
 
@@ -30,6 +30,7 @@ echo "[OK] Revision : $DISTRIB_REVISION"
 # ==============================
 
 MACHINE="$(uname -m)"
+
 echo "[OK] Machine : $MACHINE"
 
 # ==============================
@@ -139,12 +140,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # ==============================
-# VERIFY FILE
+# BASIC FILE CHECK
 # ==============================
 
 if [ ! -s "$FILE" ]; then
     echo "[ERROR] File hasil download kosong!"
-    rm -f "$FILE"
     exit 1
 fi
 
@@ -185,25 +185,54 @@ fi
 echo "SHA256       : $SHA256"
 
 # ==============================
-# IPK BASIC VALIDATION
+# IPK VALIDATION
 # ==============================
 
 echo
-echo "[+] Checking IPK file..."
+echo "========================================"
+echo "      IPK ARCHIVE VALIDATION"
+echo "========================================"
+echo
 
-if command -v ar >/dev/null 2>&1; then
+echo "[+] Checking archive structure..."
 
-    if ar t "$FILE" >/dev/null 2>&1; then
-        echo "[OK] Valid Debian/IPK archive"
-    else
-        echo "[ERROR] File bukan IPK yang valid!"
-        rm -f "$FILE"
-        exit 1
-    fi
+TAR_LIST="$(tar -tf "$FILE" 2>/dev/null)"
 
+if [ -z "$TAR_LIST" ]; then
+    echo "[ERROR] Tidak dapat membaca archive!"
+    echo
+    echo "File:"
+    echo "$FILE"
+    exit 1
+fi
+
+echo "[OK] Archive dapat dibaca."
+
+# Check debian-binary
+
+if echo "$TAR_LIST" | grep -q "^debian-binary$"; then
+    echo "[OK] debian-binary found"
 else
-    echo "[INFO] 'ar' tidak tersedia."
-    echo "[INFO] IPK archive validation dilewati."
+    echo "[ERROR] debian-binary tidak ditemukan!"
+    exit 1
+fi
+
+# Check control.tar.gz
+
+if echo "$TAR_LIST" | grep -q "^control.tar.gz$"; then
+    echo "[OK] control.tar.gz found"
+else
+    echo "[ERROR] control.tar.gz tidak ditemukan!"
+    exit 1
+fi
+
+# Check data.tar.gz
+
+if echo "$TAR_LIST" | grep -q "^data.tar.gz$"; then
+    echo "[OK] data.tar.gz found"
+else
+    echo "[ERROR] data.tar.gz tidak ditemukan!"
+    exit 1
 fi
 
 # ==============================
@@ -212,15 +241,20 @@ fi
 
 echo
 echo "========================================"
-echo "      TEST 3 COMPLETED"
+echo "      TEST 3.1 COMPLETED"
 echo "========================================"
 echo
 echo "Download berhasil."
-echo "File valid untuk tahap berikutnya."
+echo "Archive berhasil dibaca."
+echo "Struktur IPK terdeteksi lengkap."
 echo
 echo "File:"
 echo "$FILE"
 echo
-echo "Installation NOT performed."
-echo "File sengaja dipertahankan untuk inspeksi."
+echo "SHA256:"
+echo "$SHA256"
 echo
+echo "Installation NOT performed."
+echo "File sengaja dipertahankan."
+echo
+echo "========================================"
