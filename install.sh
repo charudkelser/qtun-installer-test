@@ -1,26 +1,30 @@
 #!/bin/sh
 
+VERSION="1.0.6"
+REPO="charudkelser/luci-app-qtun"
+BASE_URL="https://github.com/$REPO/releases/download/v$VERSION"
+
 echo "========================================"
-echo "      QTUN AUTO INSTALLER TEST 1.2"
+echo "      QTUN AUTO INSTALLER TEST 2"
 echo "========================================"
 echo
 
 # ==============================
-# OPENWRT
+# DETECT OPENWRT
 # ==============================
 
-if [ -f /etc/openwrt_release ]; then
-    . /etc/openwrt_release
-else
+if [ ! -f /etc/openwrt_release ]; then
     echo "[ERROR] OpenWrt tidak terdeteksi!"
     exit 1
 fi
+
+. /etc/openwrt_release
 
 echo "[OK] OpenWrt : $DISTRIB_RELEASE"
 echo "[OK] Revision : $DISTRIB_REVISION"
 
 # ==============================
-# MACHINE
+# DETECT MACHINE
 # ==============================
 
 MACHINE="$(uname -m)"
@@ -28,81 +32,107 @@ MACHINE="$(uname -m)"
 echo "[OK] Machine : $MACHINE"
 
 # ==============================
-# TARGET
+# DETECT OPKG ARCHITECTURE
 # ==============================
 
-TARGET="$(ubus call system board 2>/dev/null |
-    sed -n 's/.*"target": *"\([^"]*\)".*/\1/p')"
-
-echo "[OK] Target  : $TARGET"
-
-echo
-echo "========================================"
-echo "      ANALYZING OPKG ARCHITECTURE"
-echo "========================================"
-echo
-
 BEST_ARCH=""
-BEST_PRIORITY=0
+BEST_PRIORITY=""
 
-opkg print-architecture 2>/dev/null |
 while read -r TYPE ARCH PRIORITY
 do
     [ "$TYPE" = "arch" ] || continue
+    [ "$ARCH" = "all" ] && continue
 
-    echo "[FOUND] $ARCH (priority $PRIORITY)"
+    if [ -z "$BEST_PRIORITY" ] || [ "$PRIORITY" -gt "$BEST_PRIORITY" ]; then
+        BEST_ARCH="$ARCH"
+        BEST_PRIORITY="$PRIORITY"
+    fi
+done <<EOF
+$(opkg print-architecture 2>/dev/null)
+EOF
 
-done
+if [ -z "$BEST_ARCH" ]; then
+    echo "[ERROR] Architecture tidak ditemukan!"
+    exit 1
+fi
+
+echo "[OK] Selected Arch : $BEST_ARCH"
+echo "[OK] Priority      : $BEST_PRIORITY"
 
 echo
 echo "========================================"
-echo "      CANDIDATE ARCHITECTURES"
+echo "      PACKAGE DETECTION"
 echo "========================================"
 echo
 
-# Cari architecture non-all dengan priority tertinggi.
-# Hasil disimpan sementara agar bisa dipakai setelah loop.
+# ==============================
+# SPECIFIC PACKAGE
+# ==============================
 
-TMP="/tmp/qtun_arch_test"
+SPECIFIC_PACKAGE="luci-app-qtun_${VERSION}_${BEST_ARCH}.ipk"
+SPECIFIC_URL="$BASE_URL/$SPECIFIC_PACKAGE"
 
-opkg print-architecture 2>/dev/null |
-awk '$1 == "arch" && $2 != "all" {print $2, $3}' |
-sort -k2,2nr > "$TMP"
+echo "[+] Checking specific package..."
+echo "    $SPECIFIC_PACKAGE"
 
-if [ -s "$TMP" ]; then
+if wget --no-check-certificate --spider -q "$SPECIFIC_URL" 2>/dev/null; then
 
-    echo "[+] Priority order:"
-
-    while read -r ARCH PRIORITY
-    do
-        echo "    $ARCH -> $PRIORITY"
-    done < "$TMP"
-
-    BEST_ARCH="$(head -n 1 "$TMP" | awk '{print $1}')"
-    BEST_PRIORITY="$(head -n 1 "$TMP" | awk '{print $2}')"
+    echo "[OK] Specific package FOUND!"
+    SELECTED_PACKAGE="$SPECIFIC_PACKAGE"
+    SELECTED_URL="$SPECIFIC_URL"
+    PACKAGE_TYPE="ARCHITECTURE-SPECIFIC"
 
 else
 
-    echo "[WARN] Tidak ada architecture non-all."
+    echo "[INFO] Specific package NOT FOUND."
+
+    # ==============================
+    # UNIVERSAL FALLBACK
+    # ==============================
+
+    UNIVERSAL_PACKAGE="luci-app-qtun_${VERSION}_all.ipk"
+    UNIVERSAL_URL="$BASE_URL/$UNIVERSAL_PACKAGE"
+
+    echo
+    echo "[+] Checking universal package..."
+    echo "    $UNIVERSAL_PACKAGE"
+
+    if wget --no-check-certificate --spider -q "$UNIVERSAL_URL" 2>/dev/null; then
+
+        echo "[OK] Universal package FOUND!"
+
+        SELECTED_PACKAGE="$UNIVERSAL_PACKAGE"
+        SELECTED_URL="$UNIVERSAL_URL"
+        PACKAGE_TYPE="UNIVERSAL"
+
+    else
+
+        echo "[ERROR] No compatible package found!"
+        echo
+        echo "Architecture : $BEST_ARCH"
+        echo "Version      : $VERSION"
+        exit 1
+    fi
 fi
 
-rm -f "$TMP"
-
 echo
 echo "========================================"
-echo "      DETECTION RESULT"
+echo "      PACKAGE SELECTION RESULT"
 echo "========================================"
 echo
 
-echo "Machine        : $MACHINE"
-echo "Target         : $TARGET"
-echo "Selected Arch  : $BEST_ARCH"
-echo "Priority       : $BEST_PRIORITY"
+echo "Architecture : $BEST_ARCH"
+echo "Package      : $SELECTED_PACKAGE"
+echo "Type         : $PACKAGE_TYPE"
+echo "URL          : $SELECTED_URL"
 
 echo
 echo "========================================"
-echo "      TEST 1.2 COMPLETED"
+echo "      TEST 2 COMPLETED"
 echo "========================================"
 echo
+echo "Package ditemukan."
+echo "Tidak ada download."
 echo "Tidak ada proses install."
-echo "Tidak ada perubahan konfigurasi."
+echo "Tidak ada perubahan sistem."
+echo
