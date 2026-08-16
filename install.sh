@@ -169,3 +169,58 @@ echo
 echo "[+] Calculating SHA256..."
 
 if command -v sha256sum >/dev/null 2>&1; then
+
+    SHA256="$(sha256sum "$FILE" | awk '{print $1}')"
+
+elif command -v openssl >/dev/null 2>&1; then
+
+    SHA256="$(openssl dgst -sha256 "$FILE" | awk '{print $NF}')"
+
+else
+
+    SHA256="SHA256 tool tidak tersedia"
+
+fi
+
+echo "SHA256       : $SHA256"
+
+# ==============================
+# IPK BASIC VALIDATION
+# ==============================
+
+echo
+echo "[+] Checking IPK file..."
+
+if command -v ar >/dev/null 2>&1; then
+
+    if ar t "$FILE" >/dev/null 2>&1; then
+        echo "[OK] Valid Debian/IPK archive"
+    else
+        echo "[ERROR] File bukan IPK yang valid!"
+        rm -f "$FILE"
+        exit 1
+    fi
+
+else
+    echo "[INFO] 'ar' tidak tersedia."
+    echo "[INFO] IPK archive validation dilewati."
+fi
+
+# ==============================
+# RESULT
+# ==============================
+
+echo
+echo "========================================"
+echo "      TEST 3 COMPLETED"
+echo "========================================"
+echo
+echo "Download berhasil."
+echo "File valid untuk tahap berikutnya."
+echo
+echo "File:"
+echo "$FILE"
+echo
+echo "Installation NOT performed."
+echo "File sengaja dipertahankan untuk inspeksi."
+echo
